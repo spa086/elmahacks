@@ -1,0 +1,19 @@
+#!/bin/bash
+
+POSTGRES_PASSWORD=$(sudo docker exec -it elma365 bash -c "kubectl get secrets elma365-db-connections -o yaml | grep ELMA365_POSTGRES_PASSWORD: | cut -d: -f2 | base64 -d")
+
+expected=$(cat <<'EOF'  
+$(cat table.txt | sed 's/$/\\n/g')
+EOF
+)
+
+actual=$(sudo docker exec-it elma365 bash -c "kubectl exec -i postgres-0 -- psql -h localhost -U postgres -d elma365 -W <<< $POSTGRES_PASSWORD -c "\dt+ *.*" 2>&1")
+
+diff -q <(echo "$expected") - <<< "$actual" > /dev/null
+DIFF_STATUS=$?
+
+if [ $DIFF_STATUS -eq 0 ]; then
+  echo "Все таблицы созданы"
+else
+  echo "Не все таблицы созданы"
+fi
